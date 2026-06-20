@@ -26,16 +26,20 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 2. **Targeted Full-Text Downloading:** Once the abstracts are verified to match the research need, the script MUST download or scrape the *entire full text* of the filtered subset (e.g., top 20-30 papers).
 3. **Deep Reading & Filtering:** Read the downloaded full texts (specifically Methodology and Results) to extract the actual mechanisms. Discard any papers that fail to substantiate the claims in their abstracts or overstate findings.
 3. **Long-Running Execution:** Execute the script using `terminal(background=true, notify_on_complete=true)`. This prevents timeouts and saves tokens while the script runs autonomously. Wait for the background notification before proceeding.
-4. **Synthesis:** Once the background task finishes, read the locally saved full texts to generate the final Synthesis Reports.
+4. **Synthesis:** Once the background task finishes, read the locally saved full texts to generate the final Synthesis Reports. *(Note: While the user has a global preference for concise, numbered lists in general chat (ADHD-friendly), all Synthesis Reports and formal outputs in this skill MUST be written in standard, formal academic prose, overriding the chat preference.)*
 4. **Subagent C (Master Synthesizer):** After A and B complete, you MUST spawn a third subagent, **Subagent C**. Pass both the Scopus and Open Science synthesis reports (which contain ~60 cited papers combined) to Subagent C. Its sole goal is to merge, critically analyze, and curate a final master synthesis that directly addresses the overarching research direction, explicitly selecting and citing at least 20 best papers for the final manuscript.
 
-### Phase 1: Neural & Academic Discovery (`exa-search` + `scopus-mcp` + `google-science-skills`)
+### Phase 1: Strict Multi-Agent Discovery (`scopus-mcp` + `exa-search` + `openalex` + `semantic-scholar`)
 1. **Journal Quality Filter**: ONLY include Q1 and Q2 papers. If a Q3 paper provides crucial evidence, you MUST explicitly mark it in the text/table with `[Q3]`. STRICTLY EXCLUDE any Q4 papers and ANY papers published by MDPI.
-2. **Query Formulation**: Break down the user's topic into 3-5 distinct semantic search queries.
-3. **Proactive Scopus API Search (High Priority)**: Actively deploy the `scopus-mcp` tools (`search_scopus` and `get_abstract_details`) to query the Elsevier Scopus database directly. This is the primary and most authoritative source. Bypass web UI scraping entirely by using these direct API tools.
-4. **Neural Search**: Call the **Exa Search MCP** to supplement with contextually relevant articles, technical blogs, and open-access papers.
-4. **Academic Databases**: Call relevant `google-science-skills` (e.g., PubMed, Semantic Scholar) to pull additional peer-reviewed metadata.
-4. **Exhaustive Mapping (User Rule)**: Do NOT sample (e.g., just looking at 5 out of 20). Process the *exhaustive* set of relevant findings into a structured Markdown table: `| Title | Authors/Year | Key Finding | URL/DOI |`.
+2. **Mandatory 3-Subagent Deployment**: You MUST spawn exactly three subagents using `delegate_task` to handle different geographical or thematic queries concurrently.
+3. **Mandatory Subagent Rules**: The subagents MUST strictly adhere to the MDPI/Q4 exclusion rules. 
+4. **Mandatory Toolset Utilization**: Each subagent (or the collective effort) MUST explicitly utilize ALL of the following databases to ensure exhaustive coverage:
+   - `scopus-mcp` (for Elsevier/authoritative DB)
+   - `exa-search` (for neural web search and Open Access discovery)
+   - OpenAlex API (via Python/Node.js scripts, strictly filtering out MDPI)
+   - Semantic Scholar API (via Python/Node.js scripts)
+   Failure to use all four sources is a violation of this skill.
+5. **Exhaustive Mapping (User Rule)**: Do NOT sample (e.g., just looking at 5 out of 20). Process the *exhaustive* set of relevant findings into a structured Markdown table: `| Title | Authors/Year | Key Finding | URL/DOI |`.
 
 ### Phase 2: Deep Extraction (`cloakbrowser` + `deep-research`)
 1. **Dynamic Scraping**: For high-value sources that require JavaScript rendering, interaction, or are heavily dynamically loaded, use the **CloakBrowser** tool/CLI to navigate, bypass anti-bot protections, wait for specific DOM selectors, and extract the full text. Do NOT use standard Playwright for this, as CloakBrowser is the primary scraper.
@@ -72,6 +76,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 4. Repeat the Remi review process until Remi approves the manuscript with zero critical concerns.
 
 ### Phase 6: Data Visualization & Final Document Generation (.docx)
+**CRITICAL RULE**: You MUST NOT generate or export the final .docx file until Phase 4 (Text Humanizer), Phase 4.5 (DOI Verification), and Phase 5 (Remi Review) have been explicitly executed and passed. Skipping these steps before exporting is a strict violation of this pipeline.
 1. **Infographic & Statistical Plotting**: 
    - For highly engaging, data-driven storytelling and statistical plots, you MUST utilize the **AntV Infographic** (`@antv/infographic`) framework. 
    - Write a short Node.js/HTML script that uses the AntV declarative infographic syntax to render the key research takeaways or statistics.
@@ -111,3 +116,6 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 - **Intersection of Zero (Query Formulation):** When cross-analyzing highly specific variables (e.g., comparing 4 distinct cities simultaneously), NEVER combine them into a single academic API search query (e.g., Crossref/Semantic Scholar). This yields zero results. Deconstruct the research into atomic, independent searches (e.g., "Paris drought NPP", "Singapore UHI NPP") and synthesize the results post-retrieval.
 - **API Rate Limits:** Semantic Scholar public APIs aggressively rate-limit (HTTP 429). Implement delays, or use the Crossref API (`https://api.crossref.org/works?query=...`) as a more resilient fallback for bulk DOI metadata retrieval.
 - **Windows MSYS Execution Context:** On Windows hosts, the `terminal` tool runs MSYS bash where standard `python` and `pip` commands may fail or open the Windows Store. Always use `py script.py` to run scripts and `py -m pip install` to install dependencies. For background async tasks and PDF extraction, Node.js (`node`) is heavily preferred as it natively handles async loops well in the MSYS terminal without alias issues. See `references/nodejs-pdf-extraction.md` for stable `pdf-parse` templates.
+- **Visible Background Agents (Desktop UI vs Cronjobs):** If the user asks to "see" subagents working in the Desktop UI (e.g. for scheduled tracking), do NOT use a standard silent background `cronjob`. Cronjobs run headless and are invisible in the UI. Instead, update the `cronjob` to act as a *reminder* (e.g., "Time for the weekly track. Reply [Explicit Approval] to start."). When the user replies in the chat, launch the subagents via `delegate_task` so they are rendered visibly in the UI (limited by `max_concurrent_children`, usually 3).
+- **Missing MCP Servers after Environment Migration:** If the user moves their `.hermes` folder to a new drive/machine, external MCP servers (like `scopus-mcp`) defined in the old `config.yaml` are not automatically transferred to the new active config. If the tool is unexpectedly missing, manually check the old `config.yaml` and append the configuration to the current `~/AppData/Local/hermes/config.yaml`.
+- **Local File Reading vs UI Uploads ("Invalid API Key" Error):** If the user attempts to upload a `.docx` draft or PDF via the Desktop UI paperclip/drag-and-drop and encounters an "Invalid API key" error, it means the UI is trying to send the file directly to the LLM provider (e.g. Gemini/OpenAI) which lacks the proper file endpoint permissions. **Do not ask them to fix their API key.** Instead, instruct the user to provide the absolute file path (e.g. `D:\Tommy\document.docx`) so you can use the built-in `read_file` tool to parse the document locally without hitting external APIs.

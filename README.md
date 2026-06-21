@@ -90,4 +90,15 @@ Simply trigger the agent with a research prompt:
 The agent will take over, present a blueprint, ask for your approval, and then execute the entire pipeline autonomously.
 
 ---
+
+## ⚖️ Academic Ethics & AI Usage Disclaimer
+
+While **Deep Science Writer** implements rigorous anti-hallucination checks, DOI verification, and strict Q1/Q2 filtering, it remains an AI assistant, not an author. By using this tool, you agree to the following principles of academic integrity:
+
+1. **Human Accountability:** The human researcher assumes 100% responsibility for the final manuscript's accuracy, scientific validity, and originality. AI-generated syntheses must be critically reviewed, not blindly accepted.
+2. **Evidence Verification:** Though the agent downloads and parses full-text PDFs to prevent hallucination, you must personally verify that the cited literature supports the claims in the exact context you intend. Do not rely solely on the agent's interpretation.
+3. **Transparency & Disclosure:** You must comply with your target journal's or institution's policies regarding AI usage. Transparently declare the use of AI tools (e.g., Hermes Agent, LLMs) in the methodology or acknowledgments if required by the publisher.
+4. **Originality over Automation:** Using AI is not a violation of ethics if used correctly as a scaffolding tool. True research requires your unique insights, critical thinking, and intellectual contribution. This tool is designed to eliminate tedious formatting and literature gathering, not to bypass the core cognitive work of science.
+
+---
 **License:** MIT

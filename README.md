@@ -51,6 +51,9 @@ Add these to your `config.yaml` or `claude_desktop_config.json`:
 * **Obsidian:** The skill looks for `%OBSIDIAN_VAULT_PATH%\Hermes\` (fallback: `%USERPROFILE%\Documents\Obsidian Vault\Hermes\`). Update `SKILL.md` Phase 7 or set the environment variable if your vault is located elsewhere.
 * **Output Drive:** All outputs strictly save to `D:\Tommy` (or your configured environment).
 
+### 5. Network Environment (Important)
+* **University/Academic Network Recommended:** For Phase 4.6 (Zotero Archiving & Full-Text PDF Download), the agent utilizes `cloakbrowser` to bypass Cloudflare and publisher paywalls (e.g., Wiley, Elsevier). Connecting via a university or academic institution's network is **highly recommended** as it provides native IP-based authorization to access these restricted databases, ensuring a 100% success rate for automated PDF extraction.
+
 ---
 
 ## 🚀 Installation

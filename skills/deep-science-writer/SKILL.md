@@ -15,46 +15,74 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 ## 📋 Workflow Steps
 
 ### Phase 0: Mandatory Deep Context Gathering & Research Plan
-1. Incorporate academic rigor from `nature-skills`, structured literature parsing from `academic-research-skills`, and cross-validation techniques from `superpowers`. Keep their principles active in context.
+1. Incorporate academic rigor, structured literature parsing, and cross-validation techniques into your approach and keep those principles active in context. Reference material for these lives in the local repos `C:/Users/User/workspace/nature-skills/`, `C:/Users/User/workspace/academic-research-skills/`, and `C:/Users/User/workspace/superpowers/` — these are **not** installed skills, so read from them with `Read`/`Grep` rather than trying to invoke them.
 2. **Mandatory Interrogation:** You MUST deeply understand the user's current research topic before doing anything else. If the user's initial prompt is too brief, you MUST actively interrogate them to extract their exact pain points, research hypotheses, and core objectives. Do NOT proceed until you fully grasp the context.
 3. **Mandatory Pre-Flight Discussion:** Once the context is understood, formulate a preliminary research plan (proposed keywords, target databases, expected article structure, and goals).
-4. Present this blueprint to the user to discuss the research direction. Focus on delegating the heavy lifting to parallel subagents via `delegate_task` to protect the main context window.
+4. Present this blueprint to the user to discuss the research direction. Focus on delegating the heavy lifting to parallel subagents via `Agent` to protect the main context window.
 5. **Halt & Wait:** You MUST wait for the user's "Explicit Approval" of the research plan before proceeding to Phase 0.5.
 
 ### Phase 0.5: Background Sourcing, Full-Text Deep Reading, & Gap Analysis
 1. **Large-Scale Abstract Screening:** Delegate subagents or write a background script to fetch a large pool of abstracts (e.g., 100+ papers) via APIs. Screen these abstracts for strict relevance and Q1/Q2 quality first.
 2. **Targeted Full-Text Downloading:** Once the abstracts are verified to match the research need, the script MUST download or scrape the *entire full text* of the filtered subset (e.g., top 20-30 papers).
 3. **Deep Reading & Filtering:** Read the downloaded full texts (specifically Methodology and Results) to extract the actual mechanisms. Discard any papers that fail to substantiate the claims in their abstracts or overstate findings.
-4. **Long-Running Execution:** Execute the script using `terminal(background=true, notify_on_complete=true)`. Wait for the background notification before proceeding.
+4. **Long-Running Execution:** Execute the script with the `Bash` tool using `run_in_background: true`. You are re-invoked automatically when it exits — do not poll. Wait for that notification before proceeding.
 5. **Mandatory Justification & Gap Report:** Before moving to synthesis or drafting, you MUST present a structured evaluation report to the user containing exactly these three sections:
    - **Selection Rationale (為什麼讀這幾篇)**: Explicitly explain how these specific papers map precisely to the user's stated topic and pain points.
    - **Research Gap (研究缺口在哪)**: Identify what these papers leave unsolved or unaddressed, defining the exact gap in the current literature.
    - **Topic Enhancement (對課題有什麼提升)**: Clearly articulate how these findings can be fed back into the user's project to improve their experimental design, strengthen their argument, or correct their research trajectory.
 6. **Synthesis & Synthesis Mastery:** Only after the user approves the Gap Report, spawn **Subagent C** (Master Synthesizer) to merge and critically analyze the findings into a formal academic synthesis report. *(Note: Override the user's general chat preference for concise lists; use standard formal academic prose here.)*
 
-### Phase 1: Strict Multi-Agent Discovery (`scopus-mcp` + `exa-search` + `openalex` + `semantic-scholar`)
+### Phase 1: Strict Multi-Agent Discovery (`scopus-mcp` + `exa-search` + `openalex` + `semantic-scholar` + `anysearch`)
 1. **Journal Quality Filter**: ONLY include Q1 and Q2 papers. If a Q3 paper provides crucial evidence, you MUST explicitly mark it in the text/table with `[Q3]`. STRICTLY EXCLUDE any Q4 papers and ANY papers published by MDPI.
-2. **Mandatory 4-Subagent Deployment**: You MUST spawn exactly four concurrent subagents using `delegate_task`. Assign each subagent to specialize in one core database: Subagent 1 (Scopus), Subagent 2 (Exa Search), Subagent 3 (OpenAlex), and Subagent 4 (Semantic Scholar).
+2. **Mandatory 5-Subagent Deployment**: You MUST spawn exactly five concurrent subagents using `Agent`. Assign each subagent to specialize in one core database: Subagent 1 (Scopus), Subagent 2 (Exa Search), Subagent 3 (OpenAlex), Subagent 4 (Semantic Scholar), and Subagent 5 (AnySearch vertical academic search and citation graph).
 3. **Mandatory Subagent Rules**: The subagents MUST strictly adhere to the MDPI/Q4 exclusion rules. 
 4. **Mandatory Toolset Utilization**: Each subagent (or the collective effort) MUST explicitly utilize ALL of the following databases to ensure exhaustive coverage:
    - `scopus-mcp` (for Elsevier/authoritative DB)
    - `exa-search` (for neural web search and Open Access discovery)
    - OpenAlex API (via Python/Node.js scripts, strictly filtering out MDPI)
    - Semantic Scholar API (via Python/Node.js scripts)
-   Failure to use all four sources is a violation of this skill.
-5. **Exhaustive Mapping (User Rule)**: Do NOT sample (e.g., just looking at 5 out of 20). Process the *exhaustive* set of relevant findings into a structured Markdown table: `| Title | Authors/Year | Key Finding | URL/DOI |`.
+   - AnySearch vertical academic search (via the `anysearch` skill CLI -- see Subagent 5 below)
+   Failure to use all five sources is a violation of this skill.
+5. **Subagent 5 -- AnySearch (vertical academic + citation graph).** Installed at `C:/Users/User/.claude/skills/anysearch/`. Runs a bundled CLI against public HTTP endpoints; no MCP server, and **no API key required** (anonymous access works; a key only raises rate limits).
+
+   Its distinct value is the `academic` vertical domain, which the other four cannot match on cost or reliability:
+
+   | sub_domain | Use for |
+   |---|---|
+   | `academic.citation` | **Citation graph by DOI.** `op=citations` (cited-by), `op=references` (full reference list with DOIs), `op=citation-count`, `op=author`. The highest-value call in this phase. |
+   | `academic.search` | Cross-discipline paper search by keyword, title, author, institution; returns metadata and open-access links |
+   | `academic.preprint` | arXiv / bioRxiv / medRxiv preprints, with `field`, `year_from`/`year_to`, `open_access`, and direct `doi` lookup |
+   | `academic.biomedical` | MEDLINE / PMC with MeSH terms and PMC full-text links |
+   | `academic.dataset` | Zenodo / Dryad / Figshare datasets and research software |
+
+   **Always call `get_sub_domains --domain academic` first** to confirm the current parameter set, then search. `id` is a required parameter for `academic.citation`; pass the bare DOI with no `doi:` prefix.
+
+   ```bash
+   PY="C:/Users/User/AppData/Local/hermes/hermes-agent/venv/Scripts/python"
+   CLI="C:/Users/User/.claude/skills/anysearch/scripts/anysearch_cli.py"
+   "$PY" "$CLI" get_sub_domains --domain academic
+   "$PY" "$CLI" search "<DOI>" --tag academic.citation --params "id=<DOI>,op=references" --max_results 10
+   "$PY" "$CLI" batch_search --query "topic A" --query "topic B" --tag academic.search --max_results 5
+   "$PY" "$CLI" extract --url "<url>"
+   ```
+
+   **Why this subagent exists.** In the 2026-08 Fukuoka run the Semantic Scholar citation-graph track burned roughly 25 minutes against the rate-limited anonymous pool and initially reported a false negative. The same query through AnySearch returned a complete 64-entry reference list with DOIs in about one second, with no key. Assign Subagent 5 the citation-graph work explicitly: pull `references` and `citations` for every seed DOI, because that is where thematically disconnected literatures surface -- keyword search cannot reach a body of work that shares no vocabulary with the query.
+
+   **Two cautions.** AnySearch *general* web search returns MDPI, ResearchGate, and forum results, so the MDPI/Q4 exclusion must still be applied downstream -- it is not filtered at source. And prefer the vertical `academic.*` tags over plain `search` for literature work; plain web search returns blog-grade results.
+
+6. **Exhaustive Mapping (User Rule)**: Do NOT sample (e.g., just looking at 5 out of 20). Process the *exhaustive* set of relevant findings into a structured Markdown table: `| Title | Authors/Year | Key Finding | URL/DOI |`.
 
 ### Phase 2: Deep Extraction (`cloakbrowser` + `deep-research`)
 1. **Dynamic Scraping**: For high-value sources that require JavaScript rendering, interaction, or are heavily dynamically loaded, use the **CloakBrowser** tool/CLI to navigate, bypass anti-bot protections, wait for specific DOM selectors, and extract the full text. Do NOT use standard Playwright for this, as CloakBrowser is the primary scraper.
 2. **Synthesis**: Cross-reference extracted findings across multiple sources to validate claims and identify consensus vs. controversy. 
 
 ### Phase 3: Structural Drafting (`article-writing`)
-1. Outline the article based on `article-writing` principles: strong hook, logical progression, evidence-backed claims, and clear logical headings.
+1. Load the article-writing skill via the `Skill` tool with `skill: "hermes-research:article-writing"`, then outline the article on its principles: strong hook, logical progression, evidence-backed claims, and clear logical headings.
 2. Integrate data explicitly. Use block equations or Mermaid diagrams if explaining complex systems or workflows.
 3. Format all inline citations and the final reference list strictly in **APA 7th** format. When generating via `python-docx`, programmatically implement APA hanging indents (`p.paragraph_format.first_line_indent = Inches(-0.5)` and `p.paragraph_format.left_indent = Inches(0.5)`) and ensure journal/book titles and volume numbers are properly italicized.
 
 ### Phase 4: Humanization & Polish (`text-humanizer`)
-1. Review the generated draft and ruthlessly strip AI-isms, applying the strict **"No Fluff"** style profile.
+1. Load the text-humanizer skill via the `Skill` tool with `skill: "hermes-research:text-humanizer"`, then review the generated draft and ruthlessly strip AI-isms, applying the strict **"No Fluff"** style profile.
 2. **Banned AI Vocabulary**: "delve", "tapestry", "in conclusion", "crucial", "testament", "realm", "fosters", "underscores", "moreover".
 3. **Style Adjustments**: 
    - Use varied sentence lengths (short, punchy sentences mixed with complex ones).
@@ -65,7 +93,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 ### Phase 4.5: Anti-Hallucination & Evidence Verification
 **Strict Requirement:** This phase MUST be completed before Remi (Phase 5) is allowed to review the manuscript.
 1. **Extraction**: Scan the draft and extract every single in-text citation (e.g., Smith, 2024) and its corresponding Reference List entry.
-2. **DOI/URL Liveness Test**: Use the `terminal` tool (via `curl -I`), Exa Search MCP, or a Python script (e.g., `requests.get` / `urllib`) to ping every DOI or URL in the reference list. For bulk or programmatic URL resolution when links are missing, execute `scripts/verify_urls.py` (uses `ddgs` and `requests`).
+2. **DOI/URL Liveness Test**: Use the `Bash` tool (via `curl -I`), Exa Search MCP, or a Python script (e.g., `requests.get` / `urllib`) to ping every DOI or URL in the reference list. For bulk or programmatic URL resolution when links are missing, execute `scripts/verify_urls.py` (uses `ddgs` and `requests`).
    - **STRICT REPLACEMENT RULE**: If a DOI/URL is dead (404) or fake, you MUST NOT simply delete the sentence or claim. You MUST trigger a targeted secondary search (Exa/Scopus) to find a real Q1/Q2 replacement paper that supports the exact claim. Download the new full-text, verify it, and insert the new citation.
 3. **Claim Grounding Check**: Cross-reference the specific claims made in the draft against the raw data/abstracts collected in Phases 1 & 2. 
    - **Strict Literalism (就事論事)**: Never over-extend findings. If a claim overstates the actual findings, down-modulate it. 
@@ -80,14 +108,14 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
    - **Step 1 (Open Access)**: Attempt fast retrieval via `scripts/fetch_oa_fulltexts.py` (Unpaywall API).
    - **Step 2 (Paywall/Cloudflare Bypass)**: If Paywalled or blocked by 403/Cloudflare (e.g., Wiley, Elsevier), you MUST execute a Python script utilizing `cloakbrowser` (`launch_context_async`) to navigate to the DOI landing page or PDF direct link. `cloakbrowser` will natively bypass bot protection by leveraging the user's University IP environment and stealth fingerprints. 
 2. **Zotero Ingestion (via `pyzotero`)**: 
-   - Load the `pyzotero` skill to integrate with the Zotero v3 API.
+   - Load the pyzotero skill via the `Skill` tool with `skill: "hermes-research:pyzotero"` to integrate with the Zotero v3 API.
    - For each verified paper, create a Parent Item in Zotero (e.g., `journalArticle`) populated with title, authors, year, DOI, and URL.
 3. **PDF Attachment**:
    - Use `zot.attachment_simple([local_pdf_path], parentid=parent_key)` to upload the downloaded PDF as an attachment to its respective Zotero Parent Item.
 4. **Error Handling**: If a PDF cannot be downloaded due to aggressive Paywalls, log the failure but still create the Parent Item in Zotero with the DOI/URL to ensure the bibliography record exists.
 
 ### Phase 5: Peer Review & Iteration (`remi`)
-1. Load the `remi` skill (`skill_view(name='remi')`) to act as a strict Nature/Science-level peer reviewer.
+1. Load the Remi skill via the `Skill` tool with `skill: "hermes-research:remi"` to act as a strict Nature/Science-level peer reviewer.
 2. Submit the Phase 4 draft to Remi for a rigorous evaluation against evidence backing, APA 7th formatting, logical flow, and academic tone.
 3. **Iteration Loop (No-Lazy-Editing Rule)**: Analyze Remi's (or the user's) critique. If structural gaps, missing evidence, or logical errors are found, you are STRICTLY FORBIDDEN from simply deleting the problematic text or rewording it to sound better.
 4. **Mandatory Secondary Search**: For any substantive critique or missing evidence, you MUST regress to Phase 1/2, conduct a new targeted literature search to find missing evidence, download the new papers, and rewrite the section based on the newly acquired data.
@@ -100,12 +128,12 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
    - Write a short Node.js/HTML script that uses the AntV declarative infographic syntax to render the key research takeaways or statistics.
    - Use `playwright-mcp` or a local headless browser script to take a high-quality screenshot (`.png`) of the rendered AntV infographic. Save it to `assets/`.
    - You may still use `mermaid.ink` for simple flowcharts, but all major data visualizations should leverage the AntV infographic capabilities for professional aesthetics.
-2. **Document Compilation (`docx` or `python-docx`)**: You MUST NOT just output Markdown as the final product. Write a Python script using `python-docx` to programmatically build the final Word document. *Important Windows Environment Note*: When executing the Python script via `terminal`, use absolute paths with forward slashes and enclose them in quotes (e.g., `python "C:/path/to/generate_docx.py"`) to prevent MSYS bash from stripping backslashes and causing `[Errno 2] No such file or directory`.
+2. **Document Compilation (`docx` or `python-docx`)**: You MUST NOT just output Markdown as the final product. Write a Python script using `python-docx` to programmatically build the final Word document. *Important Windows Environment Note*: When executing the Python script via `Bash`, use absolute paths with forward slashes and enclose them in quotes (e.g., `python "C:/path/to/generate_docx.py"`) to prevent MSYS bash from stripping backslashes and causing `[Errno 2] No such file or directory`.
 3. **Embed Assets**: Insert the generated AntV Infographic images and any Mermaid charts into the `.docx` file at the appropriate logical sections. Ensure formatting aligns with APA 7th standards (e.g., proper figure captions).
 4. **Final Delivery**: Save the generated `.docx` file directly to the `D:\` drive (e.g., `D:\Research_Report.docx`). Deliver this absolute D:\ path to the user.
 
 ### Phase 7: Knowledge Base & NotebookLM Integration
-1. **Obsidian Wiki Update**: Synthesize the core findings, literature insights, and strategic takeaways. Write or append this synthesis directly into the user's Obsidian Vault (`C:\Users\User\Documents\Obsidian Vault\Hermes\`) to maintain an ongoing, centralized knowledge base.
+1. **Obsidian Wiki Update**: Synthesize the core findings, literature insights, and strategic takeaways. Write or append this synthesis directly into the user's Obsidian Vault (`C:\Users\User\Documents\Obsidian Vault\`) to maintain an ongoing, centralized knowledge base.
 2. **NotebookLM Source Ingestion**: Utilize the `notebooklm` MCP tools to create a dedicated notebook for this research project. You MUST explicitly upload **every single cited reference** as an **individual source** into NotebookLM (do not just upload one compiled document). Upload the raw abstracts or full-texts for each cited paper so NotebookLM can accurately cross-reference and map individual citations.
 
 ## 📚 Linked References
@@ -137,13 +165,80 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 - **Action Over Planning:** Do not tell the user what you *will* do. Immediately start executing Exa Search and Playwright tool calls.
 - **Table First:** Always build and present the literature/evidence table *before* writing the final prose.
 - **Intersection of Zero (Query Formulation):** When cross-analyzing highly specific variables (e.g., comparing 4 distinct cities simultaneously), NEVER combine them into a single academic API search query (e.g., Crossref/Semantic Scholar). This yields zero results. Deconstruct the research into atomic, independent searches (e.g., "Paris drought NPP", "Singapore UHI NPP") and synthesize the results post-retrieval.
-- **API Rate Limits & Terminal Environments:** For the Semantic Scholar subagent, you MUST use the dedicated API key stored in the environment variable `SEMANTIC_SCHOLAR_API_KEY`. Include it in the Python/Node.js script's request headers as `{'x-api-key': os.environ.get('SEMANTIC_SCHOLAR_API_KEY')}` to bypass public rate limits and achieve high-throughput retrieval. For Scopus API, complex nested boolean logic with `NOT` may throw `400 Bad Request`; fetch broader results and filter locally via Python. On Windows hosts, the `terminal` tool runs MSYS bash. Always use `python -m pip install` and execute absolute paths using forward slashes and quotes (e.g., `python "C:/path/to/script.py"`) to prevent backslashes from being stripped by the shell. Additionally, when passing absolute Windows paths to python commands, MSYS bash may strip the backslashes causing `[Errno 2] No such file or directory`. Always use forward slashes for paths in terminal execution.
+- **API Rate Limits & Terminal Environments:** For the Semantic Scholar subagent, you MUST use the dedicated API key stored in the environment variable `SEMANTIC_SCHOLAR_API_KEY`. Include it in the Python/Node.js script's request headers as `{'x-api-key': os.environ.get('SEMANTIC_SCHOLAR_API_KEY')}` to bypass public rate limits and achieve high-throughput retrieval. For Scopus API, complex nested boolean logic with `NOT` may throw `400 Bad Request`; fetch broader results and filter locally via Python. On Windows hosts, the `Bash` tool runs MSYS bash. Always use `python -m pip install` and execute absolute paths using forward slashes and quotes (e.g., `python "C:/path/to/script.py"`) to prevent backslashes from being stripped by the shell. Additionally, when passing absolute Windows paths to python commands, MSYS bash may strip the backslashes causing `[Errno 2] No such file or directory`. Always use forward slashes for paths in terminal execution.
 - **OpenAlex Strict Filtering:** When querying the OpenAlex API via custom scripts, you MUST programmatically exclude MDPI and low-tier publishers by strictly checking the `host_organization_name` field (e.g., rejecting "Multidisciplinary Digital Publishing Institute" or "MDPI").
-- **Windows MSYS Execution Context:** On Windows hosts, the `terminal` tool runs MSYS bash where standard `python` and `pip` commands may fail or open the Windows Store. Always use `py script.py` to run scripts and `py -m pip install` to install dependencies. For background async tasks and PDF extraction, Node.js (`node`) is heavily preferred as it natively handles async loops well in the MSYS terminal without alias issues. See `references/nodejs-pdf-extraction.md` for stable `pdf-parse` templates.
-- **Terminal `input()` EOFError:** Do NOT use Python's `input()` function to pause for manual user interaction in scripts executed via the `terminal` tool. The MSYS terminal is non-interactive and will throw `EOFError: EOF when reading a line`. Use `time.sleep()` with a generous buffer instead.
+- **Windows MSYS Execution Context:** On Windows hosts, the `Bash` tool runs MSYS bash where standard `python` and `pip` commands may fail or open the Windows Store. Always use `py script.py` to run scripts and `py -m pip install` to install dependencies. For background async tasks and PDF extraction, Node.js (`node`) is heavily preferred as it natively handles async loops well in the MSYS terminal without alias issues. See `references/nodejs-pdf-extraction.md` for stable `pdf-parse` templates.
+- **Terminal `input()` EOFError:** Do NOT use Python's `input()` function to pause for manual user interaction in scripts executed via the `Bash` tool. The MSYS terminal is non-interactive and will throw `EOFError: EOF when reading a line`. Use `time.sleep()` with a generous buffer instead.
 - **Aggressive Cloudflare (Wiley/AGU):** Standard headless `playwright`, `cloudscraper`, and `playwright-stealth` will fail (403 Forbidden or Timeout) against strict publishers like Wiley. You MUST use `cloakbrowser` via Python (`launch_context_async`). If still blocked, fallback to `headless=False` with `asyncio.sleep(15)` to allow the user to manually solve the Captcha visibly before the automated download resumes.
-- **Visible Background Agents (Desktop UI vs Cronjobs):** If the user asks to "see" subagents working in the Desktop UI (e.g. for scheduled tracking), do NOT use a standard silent background `cronjob`. Cronjobs run headless and are invisible in the UI. Instead, update the `cronjob` to act as a *reminder* (e.g., "Time for the weekly track. Reply [Explicit Approval] to start."). When the user replies in the chat, launch the subagents via `delegate_task` so they are rendered visibly in the UI (limited by `max_concurrent_children`, usually 3).
-- **Missing MCP Servers after Environment Migration:** If the user moves their `.hermes` folder to a new drive/machine, external MCP servers (like `scopus-mcp`) defined in the old `config.yaml` are not automatically transferred to the new active config. If the tool is unexpectedly missing, manually check the old `config.yaml` and append the configuration to the current `~/AppData/Local/hermes/config.yaml`.
-- **Missing MCP Servers after Environment Migration:** If the user moves their `.hermes` folder to a new drive/machine, external MCP servers (like `scopus-mcp`) defined in the old `config.yaml` are not automatically transferred to the new active config. If the tool is unexpectedly missing, manually check the old `config.yaml` and append the configuration to the current `~/AppData/Local/hermes/config.yaml`.
-- **Local File Reading vs UI Uploads ("Invalid API Key" Error):** If the user attempts to upload a `.docx` draft or PDF via the Desktop UI paperclip/drag-and-drop and encounters an "Invalid API key" error, it means the UI is trying to send the file directly to the LLM provider (e.g. Gemini/OpenAI) which lacks the proper file endpoint permissions. **Do not ask them to fix their API key.** Instead, instruct the user to provide the absolute file path (e.g. `D:\Tommy\document.docx`) so you can use the built-in `read_file` tool to parse the document locally without hitting external APIs.
-- **Skill Synchronization (GitHub Repository):** The source code for this skill is mirrored in `C:/Users/User/workspace/deep-research-agent/skills/deep-science-writer/`. Whenever you modify the `SKILL.md` or scripts in the local `AppData` directory, you MUST actively copy those changes to the workspace repository, commit with a standard conventional commit message, and push to `origin/main`. If a git pull conflict occurs, overwrite the workspace version with the updated `AppData` version as the source of truth.
+- **Visible Background Agents (Desktop UI vs scheduled runs):** If the user asks to "see" subagents working in the Desktop UI (e.g. for scheduled tracking), do NOT schedule a silent background run — scheduled runs execute headless and are invisible in the UI. Instead, use the `schedule` skill to create a *reminder* (e.g., "Time for the weekly track. Reply [Explicit Approval] to start."). When the user replies in the chat, launch the subagents via `Agent` so they render visibly in the UI.
+- **Scopus MCP (resolved 2026-08-21):** `scopus-mcp` is registered in Claude Code at `C:\Users\User\.claude.json` under `mcpServers.scopus`. Two things were required to make it work and must not be reverted: the real `SCOPUS_API_KEY` (the placeholder `PUT_YOUR_KEY_HERE` was the original failure), and the args `["--with", "mcp<2.0.0", "scopus-mcp"]` — the package declares an unpinned `mcp>=0.1.0`, so `uvx` pulls `mcp 2.0.0`, whose `Server` class dropped `list_tools()` and crashes the server on import. MCP changes only take effect after a **full desktop-app restart**.
+- **Local File Reading vs UI Uploads ("Invalid API Key" Error):** If the user attempts to upload a `.docx` draft or PDF via the Desktop UI paperclip/drag-and-drop and encounters an "Invalid API key" error, it means the UI is trying to send the file directly to the LLM provider (e.g. Gemini/OpenAI) which lacks the proper file endpoint permissions. **Do not ask them to fix their API key.** Instead, instruct the user to provide the absolute file path (e.g. `D:\Tommy\document.docx`) so you can use the built-in `Read` tool to parse the document locally without hitting external APIs.
+- **Canonical location & synchronization:** The **live** copy of this skill — the one Claude Code actually loads — is `C:/Users/User/.claude/skills/hermes-research/skills/deep-science-writer/`. Edit that one. Two other copies exist and are **not** loaded: `C:/Users/User/.claude/skills/learned/research-writing/deep-science-writer/` (the original Hermes-era version, kept for Hermes and as the source of the bundled `.venv`/`node_modules`, which the live copy reaches via directory junctions) and `C:/Users/User/workspace/deep-research-agent/skills/deep-science-writer/` (the GitHub mirror). After changing the live copy, mirror it to the workspace repo, commit with a conventional commit message, and push to `origin/main`; the live copy is the source of truth on conflict.
+
+## Lessons from the 2026-08 Fukuoka run (field-tested, not theoretical)
+
+A full four-subagent literature sweep was executed end to end in August 2026. These are the failures that actually occurred and the fixes that actually worked.
+
+### Elsevier full text: use the Scopus key, not a browser
+
+**The registered `SCOPUS_API_KEY` also authorises Elsevier's Article Retrieval API.** This retrieves full text for every Elsevier journal — Remote Sensing of Environment, Urban Climate, Urban Forestry & Urban Greening, Applied Geography, Cities, Solar Energy — as clean text, with no browser, no proxy, and no PDF extraction step.
+
+```python
+import requests, json
+KEY = json.load(open(r"C:/Users/User/.claude.json", encoding="utf-8"))["mcpServers"]["scopus"]["env"]["SCOPUS_API_KEY"]
+r = requests.get(f"https://api.elsevier.com/content/article/doi/{doi}?httpAccept=text/plain",
+                 headers={"X-ELS-APIKey": KEY, "Accept": "text/plain"}, timeout=60)
+```
+
+`pii/{PII}` also works (take the PII from Crossref's `alternative-id`); `httpAccept=text/xml` preserves section structure. Sleep ~1 s between calls. Six paywalled papers were retrieved this way in one pass after every crawler route had failed. **Try this before reaching for cloakbrowser on any `10.1016/` DOI.**
+
+Publisher routing that works:
+
+| Publisher | Route |
+|---|---|
+| Elsevier (`10.1016/`) | Article Retrieval API with the Scopus key, as above |
+| MDPI (`10.3390/`) | `www.mdpi.com/.../pdf` returns Access Denied, but the asset CDN `https://res.mdpi.com/<journal>/<journal>-<vol>-<page>/article_deploy/<...>.pdf` serves it |
+| Copernicus (BG, ACP, ESSD) | Fully open: `https://bg.copernicus.org/articles/<vol>/<page>/<year>/bg-<vol>-<page>-<year>.pdf` |
+| Nature / Sci Rep | `https://www.nature.com/articles/<id>.pdf` when OA |
+| PMC | Public PMC sits behind reCAPTCHA; the Europe PMC mirror `https://europepmc.org/articles/PMC<id>?pdf=render` does not |
+| Wiley / AGU | No reliable automated route found; needs institutional access |
+
+Note that OpenAlex `oa_status` is not a reliable predictor here — papers reading `closed` in OpenAlex retrieved fine through the Elsevier API.
+
+### Verify downloaded content, not just the file format
+
+A guessed NTRS identifier returned a perfectly valid 1.2 MB PDF that was a NASA launch-abort-system paper, not the requested Landsat calibration study. Checking for a `%PDF` magic number and a plausible size is **not** sufficient. Read page 1 and match expected title keywords before trusting any download:
+
+```python
+d = fitz.open(path)
+first = d[0].get_text("text").lower()
+assert "expected keyword" in first and "second keyword" in first
+```
+
+### Never propagate a subagent's number without checking the primary source
+
+Subagent reports are leads, not evidence. Two concrete errors from this run:
+
+- A Scopus subagent reported that a manuscript value "sits almost exactly on the national mean". The source paper stated plainly *"biomass and ANPP are all dry-matter based"* and defined ANPP as aboveground only. The comparison needed a dry-matter-to-carbon conversion (x0.45-0.50) **and** a belowground addition (+20-40%). Both were missing; the conclusion inverted once corrected.
+- A subagent could not attribute two numbers to the right study site from the indexed abstract and correctly said so. Once the full text was retrieved, the direction of the finding was the opposite of what the abstract fragment implied.
+
+**Rule:** before a subagent-reported number enters a synthesis or a manuscript, grep it out of the primary full text and read the sentence around it. Reserve this for load-bearing numbers; you cannot re-verify everything, so say plainly which numbers were re-verified and which were taken on report.
+
+### Background scripts must checkpoint per query, never write at the end
+
+Two of four subagents initially reported "nothing usable" and both were wrong:
+
+- One launched its sweep as `python ... | tail -70`, so all stdout buffered inside `tail` and nothing appeared until exit; the script also wrote its JSON only after all 53 queries finished, so an interrupted run yielded nothing. It had in fact completed, with 9,088 records.
+- One hit anonymous-pool 429s on Semantic Scholar and stopped before its citation-graph track.
+
+**Fix in the script, not in the retry:** redirect to a log file instead of piping to `tail`, and checkpoint the results JSON after every query so a killed run still yields partial data. Cache responses so a re-run resumes rather than repeats.
+
+### Citation-graph traversal finds what keyword search cannot
+
+Semantic Scholar's `/paper/DOI:{doi}/citations` revealed the structural reason a literature gap existed: the 53 papers citing the main site-context paper contained **zero** carbon or NPP work — the urban-greenspace literature and the carbon-cycle literature were disconnected communities. Keyword search on the site name could never have surfaced the numbers, because they live in a citation neighbourhood that never touches it. A single bridging paper connected the two.
+
+**Use citation-graph traversal when keyword search returns thematically narrow results.** It is a ~20-call job with a key. Note that `SEMANTIC_SCHOLAR_API_KEY` is currently unset, and the backup file stores only a masked placeholder (`s2k-V9...Zw6N`, literal ellipsis) — the anonymous pool 429s heavily and a real key turns a 25-minute grind into about a minute.
+
+### Reading PDFs
+
+Prefer the `markitdown` skill over raw PyMuPDF text extraction: it renders tables as Markdown pipe tables, which matters for papers whose load-bearing numbers live in a regional or parameter table. Fall back to PyMuPDF only when markitdown errors on a specific file.

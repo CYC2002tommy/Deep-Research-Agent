@@ -46,6 +46,9 @@ Add these to your `config.yaml` or `claude_desktop_config.json`:
 * **Exa Search MCP** (Highly Recommended)
   * Used for neural search fallback and broad open-access discovery.
 * **GitHub MCP & Playwright MCP** (Optional but recommended for broader functionality).
+* **You.com MCP** (Optional — general web search)
+  * Endpoint: `https://api.you.com/mcp` with an API key (`YDC_API_KEY`, get one at [you.com/platform/api-keys](https://you.com/platform/api-keys)); a keyless basic-search profile is available at `https://api.you.com/mcp?profile=free`.
+  * Useful as an additional general web-search channel for Phase 4.5 evidence hunting, and `scripts/verify_urls.py` automatically switches its search backend from DuckDuckGo to the You.com Search API when `YDC_API_KEY` is set in the environment (unset = unchanged DuckDuckGo default, with automatic fallback on request errors).
 
 ### 4. Local Environment
 * **Obsidian:** The skill looks for `%OBSIDIAN_VAULT_PATH%\Hermes\` (fallback: `%USERPROFILE%\Documents\Obsidian Vault\Hermes\`). Update `SKILL.md` Phase 7 or set the environment variable if your vault is located elsewhere.

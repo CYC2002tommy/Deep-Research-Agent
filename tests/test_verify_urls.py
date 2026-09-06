@@ -128,3 +128,92 @@ def test_custom_timeout():
         # Verify requests.get was called with the custom timeout
         _, kwargs = mock_get.call_args
         assert kwargs.get("timeout") == 20
+
+
+def test_ydc_backend_used_when_key_set(monkeypatch):
+    """With YDC_API_KEY set, _search should call the You.com API and
+    normalize its results into the same shape as DDGS."""
+    monkeypatch.setenv("YDC_API_KEY", "test-key")
+
+    ydc_response = MockResponse(
+        200,
+        {"hits": [
+            {"url": "https://example.com/ydc", "title": "YDC Paper",
+             "description": "A paper found via You.com"}
+        ]},
+    )
+    with patch("verify_urls.DDGS") as mock_ddgs_cls, \
+         patch("verify_urls.requests.get") as mock_get:
+        mock_ddgs_cls.return_value.__enter__.return_value = MagicMock()
+        # First requests.get call is the You.com search; second is the liveness check.
+        mock_get.side_effect = [ydc_response, MockResponse(200)]
+
+        results = verify_urls.verify_urls(["ydc query"])
+
+    assert len(results) == 1
+    assert results[0]["url"] == "https://example.com/ydc"
+    assert results[0]["status"] == "Verified Alive"
+    # The DuckDuckGo backend must not have been used.
+    mock_ddgs_cls.return_value.__enter__.return_value.text.assert_not_called()
+
+
+def test_ydc_backend_falls_back_on_error(monkeypatch):
+    """A failing You.com request should warn and fall back to DuckDuckGo
+    for that query instead of dropping it."""
+    monkeypatch.setenv("YDC_API_KEY", "test-key")
+
+    ddgs = MagicMock()
+    ddgs.text.return_value = [
+        {"href": "https://example.com/fallback", "title": "Fallback"}
+    ]
+    with patch("verify_urls.DDGS") as mock_ddgs_cls, \
+         patch("verify_urls.requests.get") as mock_get:
+        mock_ddgs_cls.return_value.__enter__.return_value = ddgs
+        # First requests.get call (You.com search) raises; second (liveness) returns 200.
+        mock_get.side_effect = [ConnectionError("YDC down"), MockResponse(200)]
+
+        results = verify_urls.verify_urls(["fallback query"])
+
+    assert len(results) == 1
+    assert results[0]["url"] == "https://example.com/fallback"
+    assert results[0]["status"] == "Verified Alive"
+    ddgs.text.assert_called_once()
+
+
+def test_ydc_search_no_key_raises():
+    """_ydc_search must raise when YDC_API_KEY is unset (internal guard)."""
+    import os
+    saved = os.environ.pop("YDC_API_KEY", None)
+    try:
+        with pytest.raises(RuntimeError):
+            verify_urls._ydc_search("q", 3, 10)
+    finally:
+        if saved is not None:
+            os.environ["YDC_API_KEY"] = saved
+
+
+def test_ydc_backend_skipped_when_key_unset():
+    """Without YDC_API_KEY, _search must use DuckDuckGo directly (default
+    behavior unchanged)."""
+    import os
+    saved = os.environ.pop("YDC_API_KEY", None)
+    try:
+        ddgs = MagicMock()
+        ddgs.text.return_value = [
+            {"href": "https://example.com/ddg", "title": "DDG Paper"}
+        ]
+        with patch("verify_urls.DDGS") as mock_ddgs_cls, \
+             patch("verify_urls.requests.get") as mock_get:
+            mock_ddgs_cls.return_value.__enter__.return_value = ddgs
+            mock_get.return_value = MockResponse(200)
+
+            results = verify_urls.verify_urls(["ddg query"])
+
+        assert len(results) == 1
+        assert results[0]["url"] == "https://example.com/ddg"
+        # Only the liveness-check call was made against requests.get;
+        # no You.com search call happened first.
+        assert mock_get.call_count == 1
+    finally:
+        if saved is not None:
+            os.environ["YDC_API_KEY"] = saved

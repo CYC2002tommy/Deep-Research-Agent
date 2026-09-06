@@ -93,7 +93,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 ### Phase 4.5: Anti-Hallucination & Evidence Verification
 **Strict Requirement:** This phase MUST be completed before Remi (Phase 5) is allowed to review the manuscript.
 1. **Extraction**: Scan the draft and extract every single in-text citation (e.g., Smith, 2024) and its corresponding Reference List entry.
-2. **DOI/URL Liveness Test**: Use the `Bash` tool (via `curl -I`), Exa Search MCP, or a Python script (e.g., `requests.get` / `urllib`) to ping every DOI or URL in the reference list. For bulk or programmatic URL resolution when links are missing, execute `scripts/verify_urls.py` (uses `ddgs` and `requests`).
+2. **DOI/URL Liveness Test**: Use the `Bash` tool (via `curl -I`), Exa Search MCP, or a Python script (e.g., `requests.get` / `urllib`) to ping every DOI or URL in the reference list. For bulk or programmatic URL resolution when links are missing, execute `scripts/verify_urls.py` (uses `ddgs` and `requests`; if the `YDC_API_KEY` environment variable is set, its search backend switches to the You.com Search API, falling back to `ddgs` on request errors).
    - **STRICT REPLACEMENT RULE**: If a DOI/URL is dead (404) or fake, you MUST NOT simply delete the sentence or claim. You MUST trigger a targeted secondary search (Exa/Scopus) to find a real Q1/Q2 replacement paper that supports the exact claim. Download the new full-text, verify it, and insert the new citation.
 3. **Claim Grounding Check**: Cross-reference the specific claims made in the draft against the raw data/abstracts collected in Phases 1 & 2. 
    - **Strict Literalism (就事論事)**: Never over-extend findings. If a claim overstates the actual findings, down-modulate it. 
@@ -139,7 +139,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 ## 📚 Linked References
 - `references/python-docx-manipulation.md`: Patterns for reading, creating, and safely removing XML paragraphs from `.docx` files.
 - `references/academic-api-patterns.md`: Reliable curl and Python patterns for hitting Crossref and OpenAlex APIs, including critical URL-encoding fixes.
-- `scripts/verify_urls.py`: Python script utilizing `ddgs` and `requests` to programmatically search and verify evidence URLs for Phase 4.5.
+- `scripts/verify_urls.py`: Python script utilizing `ddgs` and `requests` to programmatically search and verify evidence URLs for Phase 4.5. Optionally uses the You.com Search API instead of `ddgs` when `YDC_API_KEY` is set (falls back to `ddgs` on request errors).
 - `scripts/node/fetch_openalex_papers.js`: Node.js script for safely fetching from OpenAlex and strictly filtering out MDPI/Q4.
 - `scripts/node/fetch_unpaywall_oa.js`: Resolves DOI to Open Access PDF URLs via Unpaywall.
 - `scripts/node/scrape_html_fulltext.js`: Scrapes HTML full texts to bypass basic PDF blocks.

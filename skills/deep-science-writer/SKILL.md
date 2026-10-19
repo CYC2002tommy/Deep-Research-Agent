@@ -17,14 +17,17 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 
 ### Phase 0: Mandatory Deep Context Gathering & Research Plan
 1. Incorporate academic rigor, structured literature parsing, and cross-validation techniques into your approach and keep those principles active in context. Reference material for these lives in the local repos `C:/Users/User/workspace/nature-skills/`, `C:/Users/User/workspace/academic-research-skills/`, and `C:/Users/User/workspace/superpowers/` — these are **not** installed skills, so read from them with `Read`/`Grep` rather than trying to invoke them.
-2. **Mandatory Grilling (user's rule, 2026-10-19):** You MUST interview the user until every decision below is settled, and run nothing past RECON (step 3) before then. The method is the `grilling` skill's (`C:/Users/User/.claude/skills/grilling/SKILL.md`): map the request as a design tree, and in each round ask the **frontier**, the decisions whose prerequisites are already settled. A question that depends on an answer still open belongs to a later round.
+2. **Mandatory Grilling (user's rule, 2026-10-19):** You MUST interview the user until every decision below is settled, and run nothing past RECON (step 3) before then. The grilling (grill-me) method is written out here in full, so it runs where the grilling skill is not installed:
+   - **Design tree.** Map the request as a tree: every decision branches into the decisions that hang off it.
+   - **Rounds and the frontier.** The frontier is every decision whose prerequisites are already settled: the questions you can ask now without guessing at answers you have not heard yet. Ask the frontier in one round, then wait for the user's answers before the next round. A question whose answer depends on another question still open in this round belongs to a later round, not this one.
+   - **Recompute after every round.** Each round of answers reshapes the tree: settled decisions push the frontier outward and unblock the questions that depended on them. Recompute the frontier and ask the next round.
    - **Format.** At most 5 questions per round; the rest of the frontier waits for the next round. Number them Q1, Q2, …, give lettered options and your recommended answer, in the user's language, so the user can reply "Q1 B, Q2 A" or "全部照建議". Keep every answer to a letter or a few words; never make an answer depend on writing a paragraph.
 
      ```
      ❓ **Q1** - **<title>**: <question> A) … B) … C) …
      ➡️ <recommended letter + one-line reason>
      ```
-   - **Facts are your job, decisions are the user's.** Before each round, read what the request points at (the manuscript, its reference list, vault notes, memory, project files) inline. Never ask the user for something you can look up; ask only what is theirs to decide. A branch the prompt or memory already settles is pre-settled: state it in the blueprint instead of asking it.
+   - **Facts are your job, decisions are the user's.** Before each round, read what the request points at (the manuscript, its reference list, vault notes, memory, project files) inline. Never ask the user for something you can look up; ask only what is theirs to decide. Do not block on a lookup: one still running is an unsettled prerequisite, so only the questions downstream of it wait; ask the rest of the frontier now. A branch the prompt or memory already settles is pre-settled: state it in the blueprint instead of asking it.
    - **The tree** (a branch opens once its parent is settled; a branch whose condition does not hold is skipped):
 
      | Branch | Settles | Ask when |
@@ -37,7 +40,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
      | If the literature disagrees | adjust the text only, adjust the analysis too, or report and stop; if the analysis changes, existing data only or new data too; what happens if a conclusion flips | the run tests an existing draft, claim or analysis |
 
      Round 1, alongside RECON, asks this tree. Strategy, budget, subagent count, strategy details (framework and sub-areas, the five facets, the section grouping) and optional phases need RECON, so they are not separate rounds: the blueprint (step 4) proposes them as lettered choices with recommendations, and the one reply that approves the blueprint settles them too.
-   - **Done when the frontier is empty**: every branch answered by the user, pre-settled, skipped by its condition, or explicitly handed back. "你決定" or "照你想法" accepts your recommended answers; list each one as an assumption in the blueprint. Nothing is silently assumed.
+   - **Done when the frontier is empty**: every branch answered by the user, pre-settled, skipped by its condition, or explicitly handed back. "你決定" or "照你想法" accepts your recommended answers; list each one as an assumption in the blueprint. Nothing is silently assumed. Do not act on it until the user confirms you have reached a shared understanding: here, that confirmation is the blueprint approval (step 5).
 3. **RECON:** run one broad search on the topic as stated (OpenAlex or Scopus) alongside the first grilling round; it needs only the topic. It teaches the vocabulary, themes, method families and high-citation papers that the strategy questions need. Select nothing yet.
 4. **Blueprint.** Assembled from the grilling answers: one plan, one approval, and the "shared understanding" check that ends the grilling. It states:
    - **Run rules**: every grilling answer (scope, deliverable, output language, full-text route, reference decisions, the disagreement rule), each pre-settled branch, and each "你決定" assumption, labelled as such. These rules govern the run: where a later phase of this skill says otherwise about full-text sources or output language, the blueprint wins.
@@ -153,7 +156,7 @@ The method behind the three strategies is adapted from three workflows Consensus
 4. **Error Handling**: If a PDF cannot be downloaded due to aggressive Paywalls, log the failure but still create the Parent Item in Zotero with the DOI/URL to ensure the bibliography record exists.
 
 ### Phase 5: Peer Review & Iteration (`remi`)
-1. Load the Remi skill via the `Skill` tool with `skill: "hermes-research:remi"` to act as a strict Nature/Science-level peer reviewer.
+1. Review as Remi, a strict Nature/Science-level peer reviewer, by the full protocol in `references/remi.md`, refreshed from the installed Remi skill first (Phase 8 step 1 gives the command).
 2. Submit the Phase 4 draft to Remi for a rigorous evaluation against evidence backing, APA 7th formatting, logical flow, and academic tone.
 3. **Iteration Loop (No-Lazy-Editing Rule)**: Analyze Remi's (or the user's) critique. If structural gaps, missing evidence, or logical errors are found, you are STRICTLY FORBIDDEN from simply deleting the problematic text or rewording it to sound better.
 4. **Mandatory Secondary Search**: For any substantive critique or missing evidence, you MUST regress to Phase 1/2, conduct a new targeted literature search to find missing evidence, download the new papers, and rewrite the section based on the newly acquired data.
@@ -182,8 +185,15 @@ The method behind the three strategies is adapted from three workflows Consensus
 
 ### Phase 8: Final Remi Check — every run, every gate
 **Strict Requirement:** nothing is delivered until Remi has checked everything this run produced: the deliverable at its stop gate and the reference table. This is an internal loop, not a user halt.
-1. **Load the live Remi skill** with the `Skill` tool, `skill: "hermes-research:remi"`. That always runs the current version. Never review from memory or from another copy: the Deep-Research-Agent mirror's `skills/remi/SKILL.md` and the `learned/` copy are older versions. If the summary below disagrees with the loaded skill, the loaded skill wins.
-2. **What Remi brings** (summary of the skill, for orientation):
+1. **Use the latest Remi.** Its full protocol is written into this skill as `references/remi.md`, a byte-for-byte copy of the Remi skill. Where the Remi skill is installed it is the source of truth, so refresh the copy first:
+
+   ```bash
+   LIVE="C:/Users/User/.claude/skills/hermes-research/skills/remi/SKILL.md"
+   COPY="<skill>/references/remi.md"
+   if [ -f "$LIVE" ] && ! cmp -s "$LIVE" "$COPY"; then cp "$LIVE" "$COPY" && echo "remi copy refreshed from the installed skill"; fi
+   ```
+   Then `Read` `references/remi.md` in full and review by it. Where the Remi skill is not installed (the public mirror), the copy is the protocol. Never review from memory, and never from the mirror's `skills/remi/SKILL.md` or the `learned/` copy, which are older versions. Commit a refreshed copy with the run's other skill changes.
+2. **What Remi brings** (orientation only; `references/remi.md` governs):
    - Core red lines: no fabricated citations (suggest searches, never invent entries); support the author's thinking, do not replace it; review section by section when the text is long; unpublished text stays local and is never sent to an external service.
    - Step 0, the causal-chain audit: research question → design → sample → method → analysis → interpretation → conclusions → title; does each link follow? Then construct validity: is every compared category actually measured?
    - Concern format: a stable ID, a verbatim quote (or `location not found`), the issue, and a concrete Required revision.
@@ -223,6 +233,7 @@ After delivery and after Phase 7 steps 1-2, the run's very last message asks one
 - `references/python-docx-manipulation.md`: Patterns for reading, creating, and safely removing XML paragraphs from `.docx` files.
 - `references/academic-api-patterns.md`: Reliable curl and Python patterns for hitting Crossref and OpenAlex APIs, including critical URL-encoding fixes.
 - `scripts/verify_urls.py`: Python script utilizing `ddgs` and `requests` to programmatically search and verify evidence URLs for Phase 4.5.
+- `references/remi.md`: The full Remi review protocol (red lines, causal-chain audit, concern format, Major Issues 1-17, equation pass, bookkeeping, Formats A and B, severity tags), a byte copy of the Remi skill refreshed before each review (Phase 8 step 1).
 - `references/research-workflows.md`: The three search strategies (`sub-area`, `facets`, `syllabus`), their shared rules, the budget allocation, the gap-phrase list and the filter mapping for OpenAlex, Scopus and Semantic Scholar.
 - `scripts/node/fetch_unpaywall_oa.js`: Resolves DOI to Open Access PDF URLs via Unpaywall.
 - `scripts/node/scrape_html_fulltext.js`: Scrapes HTML full texts to bypass basic PDF blocks.

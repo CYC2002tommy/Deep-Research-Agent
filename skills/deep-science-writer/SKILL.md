@@ -49,7 +49,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
      | `facets` | an Introduction, a proposal's significance and innovation, "has anyone done X" | §2: five facet searches, verbatim gap quotes, positioning narrative |
      | `syllabus` | course topics to a reading list for students | §3: sections, 1-3 papers each, summaries, discussion questions |
 
-   - **Stop gate**: `map` runs the searches and screening (Phase 0.5 step 1, Phase 1) and stops after the abstract-level synthesis tables or reading list and the vault note; `section` runs through Phase 4.5 (full text, drafting, humanizer, grounding) and leaves the Remi review to Phase 8; `manuscript` runs every phase. A positioning narrative or any prose the user will paste into a document needs `section` or higher, so it is humanized and grounded. **Every gate ends with Phase 7 step 3 (reference table, `.xlsx`), Phase 8 (final Remi check), and the Phase 9 question (懶人包 via `eli5`).**
+   - **Stop gate**: `map` runs the searches and screening (Phase 0.5 step 1, Phase 1) and stops after the abstract-level synthesis tables or reading list and the vault note; `section` runs through Phase 4.5 (full text, drafting, humanizer, grounding) and leaves the Remi review to Phase 8; `manuscript` runs every phase. A positioning narrative or any prose the user will paste into a document needs `section` or higher, so it is humanized and grounded. **Every gate ends with Phase 7 step 3 (reference table, `.xlsx`), Phase 8 (final Remi check), and the Phase 9 question (懶人包 by the eli5 method).**
    - **Budget tier**: `quick` (5 searches), `standard` (10, allocation in §1), or `exhaustive` (the Phase 1 five-source sweep).
    - **Source floor**: `quick` and `standard` use at least two sources, one of them AnySearch `academic.citation` on the seed DOIs; `exhaustive` uses all five.
    - **Subagent count**: default 0. Harvest with the background template (`templates/fetch_openalex_background.js`) and MCP calls in the main conversation. A count above 0 must be named here and approved.
@@ -209,7 +209,14 @@ After delivery and after Phase 7 steps 1-2, the run's very last message asks one
 ```
 
 1. **B, or no answer:** the run ends.
-2. **A:** load the `eli5` skill with the `Skill` tool, `skill: "eli5"`, and pass as `args` a brief built only from the delivered, Remi-checked outputs: the topic in one line; the 3-5 main findings and the main gap, each with the hedge the deliverable gives it; the deliverable's file paths. Write it in the user's language unless they ask otherwise.
+2. **A:** build the 懶人包 with the eli5 method. Where the `eli5` skill is installed, load it with the `Skill` tool (`skill: "eli5"`) and pass the brief below as `args`; either way follow the method written here, so the result is the same where eli5 is missing (the public mirror has no eli5 skill).
+   - **The brief**, built only from the delivered, Remi-checked outputs: the topic in one line; the 3-5 main findings and the main gap, each with the hedge the deliverable gives it; the deliverable's file paths.
+   - **eli5's instruction**: explain it to someone who knows nothing about the topic, as an HTML artifact with big pictures and few words.
+   - **Audience**: knows nothing about the field. Explain each idea by its mechanism first (what pushes what, what moves where, and why), then give the term.
+   - **Big pictures, few words**: 4-6 panels, one idea per panel. Each panel is a large inline SVG diagram carrying the idea, with a caption of at most two short sentences. Numbers appear only as the deliverable gives them.
+   - **Panel order**: what was asked → what the literature shows (the 3-5 findings) → what is still unknown (the main gap) → what it means for the user's work → where the full files are.
+   - **Format**: an HTML Artifact; load the `artifact-design` skill first, as the Artifact tool requires. Where no Artifact tool exists, write a standalone `.html` beside the deliverable.
+   - **Language**: the user's language unless they ask otherwise.
 3. **Nothing new enters the 懶人包.** It restates the deliverable: no claim, number or citation that is not in it, and no hedge dropped for the sake of simplicity (Remi Major Issue 17, overclaim, still applies). Before it is published, check each statement against the deliverable. Because it adds nothing, it needs no second Phase 8 pass.
 
 ## 📚 Linked References

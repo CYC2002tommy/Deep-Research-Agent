@@ -49,7 +49,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
      | `facets` | an Introduction, a proposal's significance and innovation, "has anyone done X" | §2: five facet searches, verbatim gap quotes, positioning narrative |
      | `syllabus` | course topics to a reading list for students | §3: sections, 1-3 papers each, summaries, discussion questions |
 
-   - **Stop gate**: `map` runs the searches and screening (Phase 0.5 step 1, Phase 1) and stops after the abstract-level synthesis tables or reading list and the vault note; `section` runs through Phase 4.5 (full text, drafting, humanizer, grounding) and leaves the Remi review to Phase 8; `manuscript` runs every phase. A positioning narrative or any prose the user will paste into a document needs `section` or higher, so it is humanized and grounded. **Every gate ends with Phase 7 step 3 (reference table, `.xlsx`) and Phase 8 (final Remi check).**
+   - **Stop gate**: `map` runs the searches and screening (Phase 0.5 step 1, Phase 1) and stops after the abstract-level synthesis tables or reading list and the vault note; `section` runs through Phase 4.5 (full text, drafting, humanizer, grounding) and leaves the Remi review to Phase 8; `manuscript` runs every phase. A positioning narrative or any prose the user will paste into a document needs `section` or higher, so it is humanized and grounded. **Every gate ends with Phase 7 step 3 (reference table, `.xlsx`), Phase 8 (final Remi check), and the Phase 9 question (懶人包 via `eli5`).**
    - **Budget tier**: `quick` (5 searches), `standard` (10, allocation in §1), or `exhaustive` (the Phase 1 five-source sweep).
    - **Source floor**: `quick` and `standard` use at least two sources, one of them AnySearch `academic.citation` on the seed DOIs; `exhaustive` uses all five.
    - **Subagent count**: default 0. Harvest with the background template (`templates/fetch_openalex_background.js`) and MCP calls in the main conversation. A count above 0 must be named here and approved.
@@ -200,6 +200,17 @@ The method behind the three strategies is adapted from three workflows Consensus
    In every gate the reference table check is: each row's DOI resolves to its title, the Check column is empty or explained, each summary says only what its basis supports, and the table lists exactly the papers the deliverable cites.
 4. **Loop:** any `SUBMISSION BLOCKER` or `CRITICAL` is fixed under the No-Lazy-Editing rule (Phase 5 steps 3-4: a new search and new evidence, not deletion or rewording), the affected outputs are regenerated (the reference table too), and Remi checks again. Done when no blocking concern is left.
 5. **Deliver** Remi's final report beside the deliverable. List the remaining `MAJOR` and `PRESENTATION` items in the delivery note, so the user sees what was not fixed.
+
+### Phase 9: Offer a 懶人包 — every run, last message
+After delivery and after Phase 7 steps 1-2, the run's very last message asks one question, in the user's language and lettered like the grilling rounds:
+
+```
+❓ 要不要懶人包？ A) 要 B) 不用
+```
+
+1. **B, or no answer:** the run ends.
+2. **A:** load the `eli5` skill with the `Skill` tool, `skill: "eli5"`, and pass as `args` a brief built only from the delivered, Remi-checked outputs: the topic in one line; the 3-5 main findings and the main gap, each with the hedge the deliverable gives it; the deliverable's file paths. Write it in the user's language unless they ask otherwise.
+3. **Nothing new enters the 懶人包.** It restates the deliverable: no claim, number or citation that is not in it, and no hedge dropped for the sake of simplicity (Remi Major Issue 17, overclaim, still applies). Before it is published, check each statement against the deliverable. Because it adds nothing, it needs no second Phase 8 pass.
 
 ## 📚 Linked References
 - `references/python-docx-manipulation.md`: Patterns for reading, creating, and safely removing XML paragraphs from `.docx` files.

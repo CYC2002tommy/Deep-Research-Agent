@@ -169,7 +169,11 @@ def main(src, out):
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions
     wb.save(out)
-    print(f"{len(rows)} rows, {flagged} flagged -> {out}")
+    cell = lambda v: re.sub(r"\s+", " ", ILLEGAL.sub(" ", str(v or ""))).replace("|", "/")
+    md = [f"# Reference table ({out.name})", "", "| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
+    md += ["| " + " | ".join(cell(v) for v in r) + " |" for r in rows]
+    out.with_suffix(".md").write_text("\n".join(md) + "\n", encoding="utf-8")   # the RAG cannot index .xlsx
+    print(f"{len(rows)} rows, {flagged} flagged -> {out} (+ {out.with_suffix('.md').name})")
     return 2 if flagged else 0
 
 

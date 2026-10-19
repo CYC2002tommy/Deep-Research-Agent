@@ -23,6 +23,13 @@ const MAILTO = process.env.OPENALEX_MAILTO || '';   // polite pool; set before u
 // Repeat-hit threshold: 3 sub-areas for 10+ searches, 2 for 5-search budgets.
 const FOUNDATIONAL_MIN = QUERIES.length >= 10 ? 3 : 2;
 const GROUP_MIN = 3;                        // same author in this many records -> research group
+// Full-text trigger (SKILL.md Phase 1 step 8): every concept the question hinges on, one regex
+// each, e.g. ['spline', 'CASA|GLO-?PEM']. A record counts only if its title + abstract match ALL.
+// Fewer than KEY_TERMS_MIN such records -> run scripts/fulltext_search.py.
+// In a JS string a word boundary is '\\b'; a single '\b' is a backspace and silently never matches.
+const KEY_TERMS = [];
+const KEY_TERMS_MIN = 5;
+KEY_TERMS.forEach(t => { if (/[\x00-\x1f]/.test(t)) throw new Error(`KEY_TERMS entry ${JSON.stringify(t)} holds a control character: write '\\\\b', not '\\b'`); });
 
 const OUT = 'openalex_harvest';
 const CACHE = path.join(OUT, 'cache');
@@ -76,6 +83,13 @@ function checkpoint(records, log) {
         cites_per_year: +(r.cited_by_count / Math.max(1, year - (r.year || year) + 1)).toFixed(1),
     }));
     recs.forEach(r => { r.foundational = r.sub_area_hits.length >= FOUNDATIONAL_MIN; });
+    const keyRes = KEY_TERMS.map(t => new RegExp(t, 'i'));
+    recs.forEach(r => { r.all_key_terms = keyRes.length > 0 && keyRes.every(re => re.test(`${r.title || ''} ${r.abstract}`)); });
+    const keyHits = recs.filter(r => r.all_key_terms).length;
+    const keyLine = keyRes.length === 0
+        ? 'Full-text trigger: KEY_TERMS not set, so the abstract count was not measured.'
+        : `Full-text trigger: ${keyHits} of ${recs.length} abstracts match all KEY_TERMS [${KEY_TERMS.join(' ; ')}] -> `
+          + (keyHits < KEY_TERMS_MIN ? `fewer than ${KEY_TERMS_MIN}: RUN full-text search.` : `${KEY_TERMS_MIN} or more: abstracts suffice on this measure.`);
     const authors = {};
     recs.forEach(r => r.authors.forEach(a => { authors[a] = (authors[a] || 0) + 1; }));
     const groups = Object.entries(authors).filter(([, n]) => n >= GROUP_MIN).sort((a, b) => b[1] - a[1]);
@@ -88,6 +102,7 @@ function checkpoint(records, log) {
     const md = [
         '# OpenAlex harvest summary', '',
         `Unique records: ${recs.length}. Foundational (hit in >= ${FOUNDATIONAL_MIN} sub-areas): ${recs.filter(r => r.foundational).length}.`, '',
+        keyLine, '',
         '| Sub-area | Query | Filter | HTTP | Returned | Available | MDPI excluded | Error |', '|---|---|---|---|---|---|---|---|', ...rows, '',
         `## Research groups (>= ${GROUP_MIN} records)`, '', ...groups.map(([a, n]) => `- ${a}: ${n}`), '',
         '## Records by sub-area hits, then citations per year', '',

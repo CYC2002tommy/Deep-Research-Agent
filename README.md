@@ -54,13 +54,14 @@ pip install python-docx PyMuPDF requests openpyxl matplotlib pandas
 
 ## 🚀 Installation
 
-Clone this repository into your agent's skills directory:
+Claude Code loads a personal skill only from exactly one level down, `~/.claude/skills/<name>/SKILL.md`, so copy the skill folders there rather than cloning the whole repository into that directory:
 
 ```bash
-cd <AGENT_SKILLS_DIR>
 git clone https://github.com/CYC2002tommy/Deep-Research-Agent.git
+cp -r Deep-Research-Agent/skills/deep-science-writer ~/.claude/skills/
+cp -r Deep-Research-Agent/skills/remi ~/.claude/skills/
 ```
-*(Replace `<AGENT_SKILLS_DIR>` with your agent's skills path, e.g. `~/.claude/skills/`.)*
+Restart Claude Code, then check that `deep-science-writer` appears in the skill list. For another runner, copy the same folders into its skills directory.
 
 ---
 

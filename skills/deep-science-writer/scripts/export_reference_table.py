@@ -16,7 +16,8 @@ row is flagged: a wrong DOI is caught here rather than in the reference list.
 Exit 0 when every DOI resolved and matched, 2 when any row is flagged (the file is
 still written; flagged rows sort first, with the reason in the Check column).
 Italics are lost in a spreadsheet cell; the APA text is otherwise final, including
-`Article <number>` for article-numbered papers, which citeproc leaves out. Responses are cached next to
+`Article <number>` for article-numbered papers, which citeproc leaves out, and without the archive
+name ("Portico.") that citeproc adds for Wiley/AGU records. Responses are cached next to
 the output, so a re-run only fetches what is new or failed.
 """
 import difflib
@@ -134,6 +135,9 @@ def main(src, out):
             try:
                 csl = json.loads(fetch(doi, CSL, cache))
                 apa = re.sub(r"\s+", " ", plain(fetch(doi, APA, cache))).strip()
+                # citeproc prints the archive name before the link for Wiley/AGU records ("129(7). Portico.
+                # https://..."); APA 7th omits it, and it blocks the article-number anchor. Only Portico seen so far.
+                apa = re.sub(r"\. Portico\.(?=\s+https?://)", ".", apa)
                 apa = fix_article_number(apa, csl, p, check)
                 resolved = plain(first(csl.get("title")))
                 if p.get("title") and similar(p["title"], resolved) < 0.6:

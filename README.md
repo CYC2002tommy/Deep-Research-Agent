@@ -1,58 +1,54 @@
 # Deep Research Agent
 
-**Deep Science Writer** is an industrial-grade, end-to-end scientific research pipeline and AI agent skill. Designed for the Hermes/ECC framework, it completely automates the literature review process: from background full-text database querying down to anti-hallucination verification, Nature/Science-level peer review, `.docx` compilation, and Obsidian/NotebookLM knowledge base ingestion.
+**Deep Science Writer** is an end-to-end scientific literature skill for Claude Code (Hermes/ECC-compatible). It interviews you until the request is clear, picks a search strategy, decides on its own when abstracts are not enough and the full texts must be read, grounds every claim in a real, resolving DOI, has a strict peer reviewer check everything before delivery, and files the papers and outputs into your knowledge base.
 
 ## 🌟 About
-An autonomous AI agent pipeline for rigorous academic research, featuring strict DOI verification, multi-agent Scopus/OpenAlex/Semantic Scholar retrieval, and APA 7th `.docx` generation.
+A literature pipeline that asks first, measures instead of guessing, and refuses to cite what it cannot verify: Scopus / Exa / OpenAlex / Semantic Scholar / AnySearch retrieval, full-text search over ScienceDirect and Europe PMC, an APA 7th reference table built from DOIs, and a Nature/Science-level review gate.
 
 ## 🌟 Key Features
 
-* **Precision Background Sourcing (Two-Stage Pipeline):** Subagents first fetch and screen a large pool of abstracts (e.g., 100+). For the highly relevant subset, the agent downloads and deeply reads the *full text* (Methodology, Results) to prevent abstract-induced hallucination. **FULL-TEXT verification of final claims is absolutely mandatory.**
-* **Strict Quality Control:** Explicitly targets Q1-Q2 journals. Marks Q3 when strictly necessary. **Bans all Q4 and MDPI publications.**
-* **Multi-Agent Discovery:** Spawns exactly three concurrent subagents to query Scopus, Exa, OpenAlex, and Semantic Scholar simultaneously for exhaustive mapping.
-* **Strict Compliance:** The agent is hard-coded to strictly follow every step in order. Skipping phases or taking shortcuts (like drafting without full-text verification) is strictly forbidden.
-* **Zero-Hallucination Guarantee (Phase 4.5):** Automatically runs live HTTP `requests` tests against every generated DOI to ensure 100% validity. Cross-references generated claims against raw full texts to prevent AI overstatement.
-* **Automated Peer Review:** Integrates the `remi` peer-review skill *(named in tribute to my academic advisor, Remi Chauvy)* to aggressively strip "AI fluff" (e.g., "delve", "tapestry") and enforce rigorous academic tone.
-* **English Output Only:** Enforces strict English language generation for all academic reports and drafts, regardless of conversational language.
-* **Hands-Free Output:** Programmatically builds a fully formatted Microsoft Word document (`.docx`) with APA 7th hanging indents and auto-generated data visualizations.
-* **Knowledge Management Loop:** Automatically saves research summaries to your local **Obsidian Vault** and explicitly uploads **every individually cited reference** as a separate source into **Google NotebookLM** for precise audio overviews and cross-referencing.
+* **It asks before it searches.** Phase 0 is a design-tree interview (the grill-me method): at most five lettered questions per round, each with a recommended answer, so you can reply "Q1 B, Q2 A" or "go with your picks". Facts it can look up, it looks up. Nothing beyond one exploratory search runs until you approve a single blueprint.
+* **Three search strategies** (method adapted from the workflows Consensus publishes; no Consensus tool is used):
+  * `sub-area`: map a field with PICO / SPIDER / Decomposition, track papers that recur across sub-areas, recurring research groups and citations per year.
+  * `facets`: five facet searches, **verbatim gap quotes** grepped from full texts, and a three-paragraph positioning narrative for an Introduction or a proposal.
+  * `syllabus`: a course reading list with plain-language summaries and higher-order discussion questions.
+* **Stop gates and budgets.** `map` (abstract-level tables), `section` (grounded, humanized prose), or `manuscript` (the whole pipeline to `.docx`); 5, 10 or exhaustive searches; subagents only when you approve them.
+* **A measured full-text trigger.** Abstracts rarely say how a method was applied: in one real run, 0 of 121 abstracts mentioned both key terms, and the answer sat in the Methods sections. The OpenAlex harvest counts the abstracts that match every key concept; **fewer than 5 means the full-text search runs**, as do method-detail questions, number-or-mechanism claims and contradictions. `fulltext_search.py` reads up to 30 full texts (Elsevier XML and Europe PMC JATS, kept with their section headings) and extracts the sentences you need.
+* **Strict quality control.** Q1-Q2 journals; Q3 only when crucial and marked `[Q3]`; no Q4 and no MDPI.
+* **Anti-hallucination.** Every DOI is resolved; every claim is checked against the full text, never the abstract alone; anything from outside the run's searches is labelled `[not from search]`; a thin result is reported with its cause, never passed off as a research gap.
+* **A reference table you can trust (`.xlsx`).** Title, authors and the APA 7th citation come from the DOI itself (doi.org content negotiation), never retyped. Wrong DOIs (title mismatch), dead DOIs and duplicates are flagged, and article numbers that citeproc drops are restored.
+* **A reviewer gate on every output.** The full `remi` peer-review protocol *(named in tribute to my academic advisor, Remi Chauvy)* is written into the skill and refreshed from the installed `remi` skill before each review. Nothing is delivered while a blocking concern is open. An optional blind second review comes from a different model family.
+* **ELI5 summary on request.** At the very end the skill asks whether you want a one-page picture explainer (`懶人包`) built only from the reviewed output.
+* **Knowledge loop.** Every downloaded full text and every output can go into an Obsidian vault and a local RAG, with a health check that each note is indexed and retrievable; NotebookLM upload is optional.
+* **No bot-detection bypass.** Full texts come from open access (Unpaywall), the Elsevier Article Retrieval API, Europe PMC, or PDFs you download yourself.
 
 ---
 
 ## 📋 Prerequisites
 
-To run this skill successfully, your host environment must be configured with the following dependencies and Model Context Protocol (MCP) servers:
-
 ### 1. System Requirements
-* **Hermes Agent** (or a compatible ECC/Claude Code runner).
-* **Node.js** (v18+ recommended) and `npx` for running MCP servers.
-* **Python 3.10+** (in your system PATH or agent's virtual environment).
+* **Claude Code** (or Hermes / a compatible ECC runner).
+* **Node.js** v18+ (OpenAlex harvest template, MCP servers).
+* **Python 3.10+**.
 
 ### 2. Python Dependencies
-The agent relies on Python to generate documents and verify links.
 ```bash
-pip install python-docx PyMuPDF requests matplotlib seaborn pandas
+pip install python-docx PyMuPDF requests openpyxl matplotlib pandas
 ```
 
-### 3. Required MCP Servers
-Add these to your `config.yaml` or `claude_desktop_config.json`:
+### 3. MCP Servers
+* **Scopus MCP (`scopus-mcp`)**: needs a free Elsevier API key (`SCOPUS_API_KEY`) from the [Elsevier Developer Portal](https://dev.elsevier.com/). The same key powers ScienceDirect full-text search and the Article Retrieval API; full-text access follows your institution's entitlement.
+* **Exa Search MCP** (recommended): neural search and open-access discovery.
+* **Playwright MCP** (recommended): JavaScript-rendered pages.
+* **NotebookLM MCP** (optional): Phase 7 source upload.
 
-* **Scopus MCP (`scopus-mcp`)**
-  * Required for premium literature retrieval.
-  * **API Key:** Requires a free Elsevier Scopus API Key (`SCOPUS_API_KEY`). Apply at the [Elsevier Developer Portal](https://dev.elsevier.com/).
-* **NotebookLM MCP (`notebooklm-mcp-server`)**
-  * Required for Phase 7 knowledge ingestion.
-  * **Auth:** Must run `npx notebooklm-mcp-server auth` once in your terminal to authenticate your Google Account locally.
-* **Exa Search MCP** (Highly Recommended)
-  * Used for neural search fallback and broad open-access discovery.
-* **GitHub MCP & Playwright MCP** (Optional but recommended for broader functionality).
+### 4. Optional local helpers (used only when installed)
+* **obsidian-rag** (a local hybrid-retrieval MCP server) for the RAG ingestion and health check.
+* **Gemini CLI custom agents** (`ask-agy.cmd`) as independent reviewers, readers and screeners, and a **local Ollama model** for retrieval-check questions. Without them the skill does that work itself and says so.
 
-### 4. Local Environment
-* **Obsidian:** The skill looks for `%OBSIDIAN_VAULT_PATH%\Hermes\` (fallback: `%USERPROFILE%\Documents\Obsidian Vault\Hermes\`). Update `SKILL.md` Phase 7 or set the environment variable if your vault is located elsewhere.
-* **Output Drive:** All outputs strictly save to `D:\Tommy` (or your configured environment).
-
-### 5. Network Environment (Important)
-* **University/Academic Network Recommended:** For Phase 4.6 (Zotero Archiving & Full-Text PDF Download), the agent utilizes `cloakbrowser` to bypass Cloudflare and publisher paywalls (e.g., Wiley, Elsevier). Connecting via a university or academic institution's network is **highly recommended** as it provides native IP-based authorization to access these restricted databases, ensuring a 100% success rate for automated PDF extraction.
+### 5. Local Environment
+* **Obsidian:** the vault path is set in `SKILL.md` (Phase 7) and `scripts/rag_ingest.py` (`VAULT_ROOT`).
+* **Output:** the final `.docx` defaults to the `D:\` drive (change it in `SKILL.md` Phase 6); everything else stays in the run folder.
 
 ---
 
@@ -64,30 +60,30 @@ Clone this repository into your agent's skills directory:
 cd <AGENT_SKILLS_DIR>
 git clone https://github.com/CYC2002tommy/Deep-Research-Agent.git
 ```
-*(Replace `<AGENT_SKILLS_DIR>` with your agent's skills path, e.g., `~/.hermes/skills/` or `.agents/skills/` for the ECC framework).*
+*(Replace `<AGENT_SKILLS_DIR>` with your agent's skills path, e.g. `~/.claude/skills/`.)*
 
 ---
 
-## 🧠 The 7-Phase Architecture
+## 🧠 The Pipeline
 
-1. **Phase 0 and 0.5 (Plan & Background Execution):** The agent formulates a search plan and halts for your explicit approval. Once approved, it launches a local background process (`terminal(background=true)`) to scrape the full text of exactly 30 high-impact papers via APIs.
-2. **Phase 1 (Strict Multi-Agent Discovery):** Deploys exactly three concurrent subagents utilizing `scopus-mcp`, `exa-search`, OpenAlex, and Semantic Scholar. Enforces journal quality limits (Q1-Q2 only, bans MDPI).
-3. **Phase 2 (Deep Extraction):** Consolidates metadata, full texts, and key findings.
-4. **Phase 3 (Structural Drafting):** Outlines the article with evidence-backed claims and APA 7th citations.
-5. **Phase 4 and 4.5 (Anti-Hallucination):** Strips AI vocabulary. Pings all DOIs to ensure they resolve (404 = citation deleted).
-6. **Phase 5 (Remi Review):** An internal peer-review loop that critiques and rewrites the draft until academic standards are met. *(Named in tribute to my academic advisor, Remi Chauvy).* 
-7. **Phase 6 (Compilation):** Python scripts draw Mermaid/Matplotlib charts and compile the final `.docx` (ONLY allowed after Phase 4, 4.5, and 5 are passed).
-8. **Phase 7 (Knowledge Graph):** Updates Obsidian and pushes papers to NotebookLM.
+1. **Phase 0 (Interview & Blueprint):** grilling rounds, one exploratory search, then one blueprint (strategy, stop gate, budget, sources, helpers) and your single approval.
+2. **Phase 0.5 & 1 (Discovery):** multi-source harvest with cross-search tracking, screening, full-text download, and the measured full-text trigger.
+3. **Phase 2 (Deep Extraction):** values, mechanisms and verbatim quotes from the full texts.
+4. **Phase 3 (Drafting):** evidence-backed outline and APA 7th citations.
+5. **Phase 4 & 4.5 (Humanize & Verify):** strip AI fluff; resolve every DOI; ground every claim; replace, never delete, unsupported citations.
+6. **Phase 5 (Remi Review):** review-and-revise loop at the `manuscript` gate.
+7. **Phase 6 (Compilation):** the `.docx`, only after Phases 4, 4.5 and 5 pass.
+8. **Phase 7 (Knowledge Base):** the reference table, then the vault, RAG and NotebookLM.
+9. **Phase 8 (Final Remi Check):** every gate's output and the reference table, before delivery.
+10. **Phase 9 (懶人包):** an optional ELI5 explainer.
 
 ---
 
 ## 💻 Usage Example
 
-Simply trigger the agent with a research prompt:
+> *"Use deep-science-writer: has anyone interpolated CASA or GLO-PEM NPP with a thin-plate spline?"*
 
-> *"Please use the deep-science-writer skill to research the sociological and psychological acceptance of sustainability policies, segmented by age (public) and firm size (SMEs vs Large Enterprises)."*
-
-The agent will take over, present a blueprint, ask for your approval, and then execute the entire pipeline autonomously.
+The agent asks a short round of lettered questions, shows one blueprint, and after your approval runs to the agreed stop gate, here a full-text search, because the question is a method detail.
 
 ---
 
